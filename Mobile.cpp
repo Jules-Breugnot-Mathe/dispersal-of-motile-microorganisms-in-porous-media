@@ -1,10 +1,13 @@
 #include "Mobile.hpp"
 #include "Environment.hpp"
 
+#include <chrono>
+
 # define M_PI           3.14159265358979323846  /* pi */
 
 Mobile::Mobile(Point P, double v0, double Dr, double Tau, double Theta, double mu){
     this->v0 = v0; this->Dr = Dr; this->Tau = Tau; this->Theta = Theta; this->Coord = P; this->mu = mu;
+    this->Free_coord = P; this->Loop = {0, 0};
 }
 
 Mobile::~Mobile(){}
@@ -24,12 +27,20 @@ Point Mobile::getCoord() const{
     return this->Coord;
 }
 
+Point Mobile::getFreeCoord() const {
+    return this->Free_coord;
+}
+
 const double Mobile::getMt() const{
     return this->Mt;
 }
 
 Point& Mobile::getCoord(){
     return this->Coord;
+}
+
+Point& Mobile::getFreeCoord(){
+    return this->Free_coord;
 }
 
 double Mobile::getV0ForDebug() const {
@@ -40,12 +51,12 @@ double Mobile::getThetaForDebug() const {
 }
 
 
-Solid* Mobile::CollisionDetection(Environment & E){ 
+Solid* Mobile::CollisionDetection(const Environment & E){ 
     //On parcours l'ensemble des corps de l'environnement à l'aide d'un itérateur, 
     //et on renvoie en sortie un pointeur de base sur le corps en collision,
     //ou le pointeur nul si aucune collision
     //std::cout<<"adresse de E : "<<&E<<std::endl;
-    std::vector<std::unique_ptr<Solid>>::iterator it;
+    std::vector<std::unique_ptr<Solid>>::const_iterator it;
     
     for (it=E.get_Solid_vector().begin(); it != E.get_Solid_vector().end(); it++){
         if ((*it)->IsCollided(*this)){ // on déréférence l'itérateur pour avoir un pointeur sur Solid
@@ -57,8 +68,11 @@ Solid* Mobile::CollisionDetection(Environment & E){
 
 
 
-void Mobile::simulation(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode){
-    int N = std::floor(T/h);
+void Mobile::simulation(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode){
+    // temps courant, avant l'execution
+    std::chrono::high_resolution_clock::time_point a= std::chrono::high_resolution_clock::now();
+
+    double N = T/h;
     this->Coord = X;
     std::mt19937_64 engine(seed);
     std::bernoulli_distribution tumble(h/this->Tau); // variable de bernoulli de l'evènement "tumbling"
@@ -67,11 +81,17 @@ void Mobile::simulation(Environment & E, double T, double h, Point X, uint64_t s
     std::uniform_real_distribution<double> U(0, 1);
     bool tumble_outcome; // observation de la variable tumbling
     bool escape_outcome; // observation de la variable escape
+    double phi_outcome; // observation de la variable de réorientation après collision
+    double time_of_first_collision; // temps d'attente de la première collision
 
     Solid* collision = nullptr; // on initialise la collision
     this->Theta = theta(engine); // on initialise l'orientation aléatoire
 
     for (int j=0;j<N;j++){ //on parcours le temps de 0 à T = Nh
+
+        E.getDomain().MakeLoop(*this);
+        //Coord est dans le domaine, Loop a compté le nombre de tours, et Free_coord est inchangé et encapsule les coordonnées "réelles"
+
         tumble_outcome = tumble(engine); //on observe la variable tumble
         collision = this->CollisionDetection(E); // on vérifie la collision
         if (collision == nullptr) {
@@ -92,31 +112,33 @@ void Mobile::simulation(Environment & E, double T, double h, Point X, uint64_t s
             Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // on avance
         }
         else {
-            std::cout<<"collision avec le disque "<<collision->getid()<<" au temps "<<j*h<<std::endl;
             // collision détectée 
             // il faut projeter la particule sur la frontière du solide pour ne pas créer d'erreur avec le calcul d'angle 
-            std::cout<<"coordonnees avant projection : "<<this->Coord<<std::endl;
             collision->edgeProjection(*this);
-            std::cout<<"coordonnees apres projection : "<<this->Coord<<std::endl;
             escape_outcome = escape(engine); // on observe la variable escape (indépendance?)
            if ((tumble_outcome == 1)&&(escape_outcome == 1)) {
-                std::cout<<"on s echappe du disque "<<collision->getid()<<std::endl;
                 // le mobile s'échappe : on calcule l'intervalle dans lequel simuler une variable d'angle uniforme (angle de sortie) 
                 std::uniform_real_distribution<double> phi(collision->escapeAngle(*this)[0], collision->escapeAngle(*this)[1]); 
                 // variable d'angle de réorientation. Collision pointe sur un Solid, on appelle la méthode virtuelle pure escapeAngle,
                 //qui se spécifie selon le solide, puis on en tire les bornes inf et sup pour l'angle.
-                std::cout<<"intervalle d'angle de reorientation : ["<<collision->escapeAngle(*this)[0]<<" , "<<collision->escapeAngle(*this)[1]<<"]"<<std::endl;
-                this->Theta = phi(engine); // on se réoriente
+                phi_outcome = phi(engine);
+                this->Theta = phi_outcome; // on se réoriente
                 Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // et on avance
             }
             else {
                 // le mobile ne bouge pas
-                std::cout<<"on reste coince sur le disque "<<collision->getid()<<std::endl;
             }
         }
     }
-    this->Mt = std::sqrt((this->getCoord().getx() - X.getx())*(this->getCoord().getx() - X.getx()) + (this->getCoord().gety() - X.gety())*(this->getCoord().gety() - X.gety()));
+    this->Mt = std::sqrt((this->getFreeCoord().getx() - X.getx())*(this->getFreeCoord().getx() - X.getx()) + (this->getFreeCoord().gety() - X.gety())*(this->getFreeCoord().gety() - X.gety()));
     // On a calculé le déplacement total observé Mt
+    
+    // temps courant, apres l'execution
+    std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
+    // mesurer la difference, et l'exprimer en microsecondes 
+    unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    //std::cout<<"simulation d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+
     return;
 }
 
@@ -222,7 +244,10 @@ void Mobile::simulation_expo(Environment & E, double T, double h, Point X, uint6
 */
 
 
-void Mobile::write_trajectory(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename){
+void Mobile::write_trajectory(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename){
+    // temps courant, avant l'execution
+    std::chrono::high_resolution_clock::time_point a= std::chrono::high_resolution_clock::now();
+
     std::ofstream ofs;
     ofs.open(filename, std::ofstream::out | std::ofstream::trunc);
     if (ofs.is_open() == false) {
@@ -247,7 +272,10 @@ void Mobile::write_trajectory(Environment & E, double T, double h, Point X, uint
 
     for (int j=0;j<N;j++){ //on parcours le temps de 0 à T = Nh
 
-        ofs <<this->Coord.getx()<<" , "<<this->Coord.gety()<<std::endl; // on écrit les coordonnées dans le fichier
+        E.getDomain().MakeLoop(*this);
+        //Coord est dans le domaine, Loop a compté le nombre de tours, et Free_coord est inchangé et encapsule les coordonnées "réelles"
+
+        ofs <<this->Free_coord.getx()<<","<<this->Free_coord.gety()<<std::endl; // on écrit les coordonnées dans le fichier
 
         tumble_outcome = tumble(engine); //on observe la variable tumble
         collision = this->CollisionDetection(E); // on vérifie la collision
@@ -287,9 +315,16 @@ void Mobile::write_trajectory(Environment & E, double T, double h, Point X, uint
             }
         }
     }
-    this->Mt = std::sqrt((this->getCoord().getx() - X.getx())*(this->getCoord().getx() - X.getx()) + (this->getCoord().gety() - X.gety())*(this->getCoord().gety() - X.gety()));
+    this->Mt = std::sqrt((this->getFreeCoord().getx() - X.getx())*(this->getFreeCoord().getx() - X.getx()) + (this->getFreeCoord().gety() - X.gety())*(this->getFreeCoord().gety() - X.gety()));
     // On a calculé le déplacement total observé Mt
     ofs.close();
+    
+    // temps courant, apres l'execution
+    std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
+    // mesurer la difference, et l'exprimer en microsecondes 
+    unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    std::cout<<"ecriture d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+
     return;
 }
 
@@ -388,13 +423,14 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
                                  const std::string & filename,
                                  double time_upper_bound, int N_samples, int N_data)
 {
+    std::chrono::high_resolution_clock::time_point a= std::chrono::high_resolution_clock::now();//on initialise le temps d'éxécution
     /*
     on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D à différents
     temps de simulation (il y en a donc N_data). D est définis comme la valeur Mt^2 renormalisée par 2dt. Le but est d'observer numériquement
     à partir de quel temps de simulation D converge à moins de 5% d'erreur, comparé à la valeur théorique
-    obtenu par l'équivalent multivarié du théorème de berry-esseen, dans le cas particulier du déplacement libre dans R2
+    obtenu par l'équivalent multivarié du théorème de berry-esseen, dans le cas particulier du déplacement libre dans R2.
+    On cherche également à savoir si le temps de convergence de D dans le cas non trivial est le même, et à mesurer D en différents milieux
     */
-
     std::ofstream ofs(filename);
     if (!ofs.is_open()) {
         std::cerr << "measure_diffusivity : impossible d'ouvrir le fichier\n";
@@ -407,7 +443,7 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
         return;
     }
 
-    // Optionnel: écrire la première ligne contenant les temps (T, 2T, ..., N_data*T)
+    // Écriture de la première ligne contenant les temps (T, 2T, ..., N_data*T)
     for (int i = 0; i < N_data; ++i) {
         double t_i = T * (i + 1);
         ofs << t_i;
@@ -415,82 +451,54 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
     }
     ofs << "\n";
 
-    double Dist = 0; // on va stocker la distance totale parcourue pour éviter de passer par this->Mt 
+    Point starting_point(0, 0); // point de départ - utilisé pour segmenter les simulations en N_data morceaux
 
     for (int j = 0; j < N_samples; ++j) {
-        // Reset de la position pour la trajectoire j
+        // On simule un nouvel échantillon
+        // Réinitialisation complète des coordonnées du Mobile
         this->Coord = X;
+        this->Free_coord = X;           
+        this->Loop = {0, 0};
+        this->Mt = 0;
+
+        double Dist = 0;
 
         for (int i = 0; i < N_data; ++i) {
-            // starting_point = position actuelle (cumulative)
-            Point starting_point = this->Coord;
+            // on simule une portion de durée T à partir de la position actuelle
+            // et on ajoute la distance parcourue à la distance déjà parcourue par le Mobile échantilloné
+            starting_point = this->Coord; // on met à jour le point de départ
+            uint64_t seed = static_cast<uint64_t>(std::random_device{}()); // seed aléaroire pour indépendance des trajectoires
+            this->simulation(E, T, h, starting_point, seed, Reorientation_mode); // on simule du point de départ Coord actuel
 
-            // simulate one segment of duration T, starting from starting_point
-            uint64_t seed = static_cast<uint64_t>(std::random_device{}());
-            this->simulation(E, T, h, starting_point, seed, Reorientation_mode);
+            // Mt doit être calculé depuis l’origine X, pas depuis le point de départ du segment
+            double dx = this->getFreeCoord().getx() - starting_point.getx();
+            double dy = this->getFreeCoord().gety() - starting_point.gety();
+            this->Mt = std::sqrt(dx * dx + dy * dy); // on met à jour le déplacement sur le segment de temps
 
-            // Après simulation, this->Coord est la position cumulée à temps (i+1)*T.
-            Dist = std::sqrt(((this->getCoord().getx())*(this->getCoord().getx())) + (this->getCoord().gety())*(this->getCoord().gety()));
+            Dist += this->Mt; // on met à jour la distance totale parcourue sur l'échantillon
+
             double t_i = T * (i + 1);
-
             double D_est = std::numeric_limits<double>::quiet_NaN();
-            if (t_i > 0.0 && std::isfinite(Mt)) {
-                D_est = (Dist * Dist) / (4.0 * t_i); // normalisation en 2D
+
+            if (t_i > 0.0 && std::isfinite(this->Mt)) {
+                D_est = (Dist * Dist) / (2.0 * 2.0 * t_i); // normalisation en 2D par 2dt
             } else {
-                // on met NaN pour indiquer problème (sera ignoré par np.nanmean)
                 D_est = std::numeric_limits<double>::quiet_NaN();
             }
 
             ofs << D_est;
             if (i < N_data - 1) ofs << ",";
-        } // fin boucle i
-
-        ofs << "\n";
-    } // fin boucle j
-
-    ofs.close();
-}
-
-
-void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std::string Reorientation_mode, 
-                                         const std::string & filename, double time_upper_bound) {
-    std::ofstream ofs;
-    ofs.open(filename);
-    if (ofs.is_open() == false) {
-        std::cerr << "diffusivity_function_of_tau : impossible d'ouvrir le fichier" << std::endl;
-        return;
-    }
-
-    int N_tau = 100; // nombre d'échantillons de tau
-    int N_samples = 100; // nombre de simulations par tau pour estimer D
-    double tau_min = 0.1; // borne inférieure de tau
-    double tau_max = 10;  // borne supérieure de tau
-    double D_tau = 0; // estimateur de D pour chaque tau
-    double tau_value = 0; // valeur actuelle de tau
-    uint64_t seed = 0;
-
-    ofs << "tau,D" << std::endl; // en-tête du fichier CSV
-
-    for (int j = 0; j < N_tau; j++) {
-        tau_value = tau_min + j * (tau_max - tau_min) / (N_tau - 1);
-        this->Tau = 1/tau_value; // mise à jour du paramètre tau du mobile
-        D_tau = 0;
-
-        for (int i = 0; i < N_samples; i++) {
-            seed = static_cast<uint64_t>(std::random_device{}());
-            this->simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
-            // D = Mt / (2 * d * t)
-            double D_i = this->Mt / (2.0 * 2.0 * time_upper_bound);
-            D_tau += D_i;
         }
 
-        D_tau = D_tau / N_samples; // moyenne empirique sur les échantillons
-
-        ofs << std::fixed << std::setprecision(6) << tau_value << "," << D_tau << std::endl;
+        ofs << "\n";
     }
 
     ofs.close();
-    return;
+    std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
+    // mesurer la difference, et l'exprimer en microsecondes 
+    unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    std::cout<<"temps d'execution de la mesure de D sur une periode de "<<time_upper_bound<<
+    " avec "<<N_samples<<" echantillons et "<<N_data<<" mesures : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
 }
 
 void Mobile::measure_displacement(Environment & E, double T, double h, Point X, std::string Reorientation_mode, const std::string & filename, int N_samples){

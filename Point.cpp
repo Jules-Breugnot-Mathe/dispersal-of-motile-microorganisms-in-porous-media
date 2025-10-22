@@ -28,10 +28,8 @@ const double Point::gety() const{
     return this->y;
 }
 
-Point Point::operator+(const Point & other){
-    this->x += other.getx();
-    this->y += other.gety();
-    return *this;
+Point Point::operator+(const Point & other) const{
+    return Point(this->x + other.getx(), this->y + other.gety());
 }
 
 Point Point::operator-(const Point & other){

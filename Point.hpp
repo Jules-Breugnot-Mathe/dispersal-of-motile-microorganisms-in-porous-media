@@ -16,7 +16,7 @@ class Point{
         Point operator=(const Point & other);
         const double getx() const;
         const double gety() const;
-        Point operator+(const Point & other);
+        Point operator+(const Point & other) const;
         friend std::ostream& operator<<(std::ostream& o, const Point & pt);
         Point operator-(const Point & other);
         Point operator*(const double a) const;

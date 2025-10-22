@@ -57,6 +57,11 @@
         "queue": "cpp",
         "list": "cpp",
         "fstream": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "array": "cpp",
+        "chrono": "cpp",
+        "forward_list": "cpp",
+        "ratio": "cpp",
+        "sstream": "cpp"
     }
 }

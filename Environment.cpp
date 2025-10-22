@@ -5,31 +5,14 @@
 
 
 Environment::Environment(std::string Type, int radius, double R){
+    this->D = Domain(radius); // radius représente le rayon du domaine fondamental, R le rayon des obstacles
     if (Type == "empty") {
     }
     else if (Type == "uniform_Disks") {
-        int i;
-        int j;
-        for (int i=0; i<radius; i++){
-            for (int j=0; j<radius; j++){
-                Solid_vector.push_back(std::make_unique<Disk>(Point(0.5 + i, 0.5 + j), R)); 
-            }
-        }
-        for (int i=0; i<radius; i++){
-            for (int j=0; j<radius; j++){
-                Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5 - i, 0.5 + j), R)); 
-            }
-        }
-        for (int i=0; i<radius; i++){
-            for (int j=0; j<radius; j++){
-                Solid_vector.push_back(std::make_unique<Disk>(Point(0.5 + i, -0.5 - j), R)); 
-            }
-        }
-        for (int i=0; i<radius; i++){
-            for (int j=0; j<radius; j++){
-                Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5 - i, -0.5 - j), R));
-            }
-        }
+        Solid_vector.push_back(std::make_unique<Disk>(Point(0.5*radius, 0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5*radius, -0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5*radius, 0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Disk>(Point(0.5*radius, -0.5*radius), R));
     }
 }
 
@@ -48,4 +31,7 @@ std::vector<std::unique_ptr<Solid>> & Environment::get_Solid_vector(){
     return this->Solid_vector;
 }
 
+const Domain & Environment::getDomain() const {
+    return this->D;
+}
 

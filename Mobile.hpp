@@ -3,6 +3,8 @@
 #include "Point.hpp"
 #include "Solid.hpp"
 #include "Disk.hpp"
+#include "Domain.hpp"
+
 #include <memory>
 #include <random>
 #include <string>
@@ -12,8 +14,10 @@
 #include <fstream>
 #include <ostream>
 #include <iomanip>
+#include <array>
 
 class Environment;
+
 
 //tests unitaires effectués
 
@@ -22,7 +26,11 @@ class Mobile{
         double v0; // vitesse à l'origine
         double Dr; // diffusion rotationelle
         double Tau; // moyenne d'attente de l'évènement tumbling
-        Point Coord; // coordonnées en repère cartésien dans R2, sert à calculer le déplacement total
+
+        Point Coord; // coordonnées sur le tore, modulo le rayon
+        Point Free_coord; // coordonnées libres dans R2
+        std::array<double, 2> Loop; // sert à compter le nombre de tour sur le tore
+
         double Theta; // angle avec l'axe Ux
         int PoissonCount; // valeur du processus de comptage d'évènement "tumbling"
         double mu; //escape rate dans le cas d'une simulation en situation de non glissement (c'est en fait ici 1/mu)
@@ -30,6 +38,7 @@ class Mobile{
         double Mt; // observation du déplacement total du processus au temps t
         bool IsCollided; // détection des collisions, processus aléatoire 
         friend void Solid::Coordoverwrite(Mobile & M, Point P);
+        friend void Domain::MakeLoop(Mobile & M) const ;
 
     public : 
         Mobile(Point P = Point(0, 0), double v0 = 1, double Dr = 0, double Tau = 1, double Theta = 0, double mu = 0.5);
@@ -37,12 +46,14 @@ class Mobile{
         ~Mobile();
         Mobile operator=(const Mobile & other);
         Point getCoord() const; // autorise à utiliser Coord dans un calcul, pas à modifier la valeur d'un objet Mobile
-        void simulation(Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
-        Solid* CollisionDetection(Environment & E);
+        Point getFreeCoord() const; // pareil
+        void simulation(const Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
+        Solid* CollisionDetection(const Environment & E);
         const double getMt() const;
         void simulation_expo(Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
-        void write_trajectory(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename);
+        void write_trajectory(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename);
         Point& getCoord();
+        Point& getFreeCoord();
         double getV0ForDebug() const; 
         double getThetaForDebug() const;
         void test_exponentiality(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename, int N_samples);
