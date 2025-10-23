@@ -566,3 +566,52 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
     os.close();
     return;
 }
+
+
+void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std::string Reorientation_mode,
+                                        const std::string & filename, double tau_upper_bound, 
+                                        int N_samples, int N_data, double time_upper_bound)
+{
+    std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
+    std::ofstream ofs;
+    uint64_t seed = 0;
+    ofs.open(filename);
+    if (!ofs.is_open()) {
+        std::cerr<<"diffusivity_function_of_tau : impossible d'ouvrir le fichier"<<std::endl;
+        return;
+    }
+    /*
+    on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D pour différentes
+    valeurs de tau dans l'intervalle [0, tau_upper_bound] (il y en a donc N_data).
+    */
+    
+    // on stocke les valeurs de tau en en-tete : 
+    for (int i=0 ; i < N_data ; i++) {
+        ofs << (i+1)*(tau_upper_bound / N_data) << std::endl;
+    }
+
+    for (int sample=0 ; sample < N_samples ; sample++)
+    {
+    //on écrit une ligne du csv correspondant à un échantillon
+
+    //on écrit ligne par ligne les estimations de D pour différentes valeurs de tau : 
+    for (int i_data=0 ; i_data < N_data - 1; i_data++) {
+        this->Tau = (i_data + 1) * (tau_upper_bound / N_data);
+        seed = static_cast<uint64_t>(std::random_device{}());
+        simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
+        ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
+    }
+    this->Tau = tau_upper_bound;
+    seed = static_cast<uint64_t>(std::random_device{}());
+    simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
+    ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
+
+    ofs <<"\n";
+    }
+
+    ofs.close();
+    std::chrono::high_resolution_clock::time_point b = std::chrono::high_resolution_clock::now();
+    unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de 0 a "<<tau_upper_bound
+    <<", en estimant D a l'aide de "<<N_samples<<", et en effectuant "<<N_data<<" mesures : "<<time*.000001<<" s"<<std::endl;;
+}
