@@ -423,7 +423,6 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
                                  const std::string & filename,
                                  double time_upper_bound, int N_samples, int N_data)
 {
-    std::chrono::high_resolution_clock::time_point a= std::chrono::high_resolution_clock::now();//on initialise le temps d'éxécution
     /*
     on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D à différents
     temps de simulation (il y en a donc N_data). D est définis comme la valeur Mt^2 renormalisée par 2dt. Le but est d'observer numériquement
@@ -431,75 +430,114 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
     obtenu par l'équivalent multivarié du théorème de berry-esseen, dans le cas particulier du déplacement libre dans R2.
     On cherche également à savoir si le temps de convergence de D dans le cas non trivial est le même, et à mesurer D en différents milieux
     */
+
+    std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
+
+    if ((std::abs(X.getx()) >= E.getDomain().getradius()) || (std::abs(X.gety()) >= E.getDomain().getradius())) {
+        std::cerr << "measure_diffusivity : le point de départ des simulations doit être dans le domaine de l'environnement" << std::endl;
+        return;
+    }
+
     std::ofstream ofs(filename);
     if (!ofs.is_open()) {
         std::cerr << "measure_diffusivity : impossible d'ouvrir le fichier\n";
         return;
     }
 
-    double T = time_upper_bound / N_data; // durée d'un sous-segment
-    if (T <= 0.0) {
-        std::cerr << "measure_diffusivity : T invalide\n";
-        return;
-    }
+    double T = time_upper_bound;       // durée totale de la simulation
+    int N_tot = static_cast<int>(T / h);  // nombre total d’itérations
+    int N_interval = static_cast<int>(std::floor(N_tot / N_data));      // nombre d’itérations entre deux enregistrements de D
 
     // Écriture de la première ligne contenant les temps (T, 2T, ..., N_data*T)
     for (int i = 0; i < N_data; ++i) {
-        double t_i = T * (i + 1);
+        double t_i = (i + 1) * (T / N_data);
         ofs << t_i;
         if (i < N_data - 1) ofs << ",";
     }
     ofs << "\n";
 
-    Point starting_point(0, 0); // point de départ - utilisé pour segmenter les simulations en N_data morceaux
-
     for (int j = 0; j < N_samples; ++j) {
-        // On simule un nouvel échantillon
-        // Réinitialisation complète des coordonnées du Mobile
+        // Initialisation du mobile pour ce sample
         this->Coord = X;
-        this->Free_coord = X;           
+        this->Free_coord = X;
         this->Loop = {0, 0};
-        this->Mt = 0;
+        this->Theta = 0.0;
+        this->Mt = 0.0;
 
-        double Dist = 0;
+        uint64_t seed = static_cast<uint64_t>(std::random_device{}());
+        std::mt19937_64 engine(seed);
+        std::bernoulli_distribution tumble(h / this->Tau);
+        std::bernoulli_distribution escape(this->mu);
+        std::uniform_real_distribution<double> theta(0, 2 * M_PI);
+        std::uniform_real_distribution<double> U(0, 1);
 
-        for (int i = 0; i < N_data; ++i) {
-            // on simule une portion de durée T à partir de la position actuelle
-            // et on ajoute la distance parcourue à la distance déjà parcourue par le Mobile échantilloné
-            starting_point = this->Coord; // on met à jour le point de départ
-            uint64_t seed = static_cast<uint64_t>(std::random_device{}()); // seed aléaroire pour indépendance des trajectoires
-            this->simulation(E, T, h, starting_point, seed, Reorientation_mode); // on simule du point de départ Coord actuel
+        Solid* collision = nullptr;
+        this->Theta = theta(engine);
 
-            // Mt doit être calculé depuis l’origine X, pas depuis le point de départ du segment
-            double dx = this->getFreeCoord().getx() - starting_point.getx();
-            double dy = this->getFreeCoord().gety() - starting_point.gety();
-            this->Mt = std::sqrt(dx * dx + dy * dy); // on met à jour le déplacement sur le segment de temps
+        double current_time = 0.0;
+        int counter = 0; // Compte les itérations avant un enregistrement
+        double D_est = 0.0;
 
-            Dist += this->Mt; // on met à jour la distance totale parcourue sur l'échantillon
+        for (int step = 0; step < N_tot; ++step) {
+            current_time += h;
+            E.getDomain().MakeLoop(*this);
 
-            double t_i = T * (i + 1);
-            double D_est = std::numeric_limits<double>::quiet_NaN();
+            bool tumble_outcome = tumble(engine);
+            collision = this->CollisionDetection(E);
 
-            if (t_i > 0.0 && std::isfinite(this->Mt)) {
-                D_est = (Dist * Dist) / (2.0 * 2.0 * t_i); // normalisation en 2D par 2dt
-            } else {
-                D_est = std::numeric_limits<double>::quiet_NaN();
+            if (collision == nullptr) {
+                if (tumble_outcome) {
+                    if (Reorientation_mode == "run_and_reverse") {
+                        double Xtmp = 2 * std::asin(2 * U(engine) - 1);
+                        this->Theta = this->Theta + M_PI / 2 + Xtmp;
+                    }
+                    else if (Reorientation_mode == "isotropic") {
+                        this->Theta = theta(engine);
+                    }
+                }
+                Coord = Coord + Point(v0 * h * std::cos(Theta), v0 * h * std::sin(Theta));
+            }
+            else {
+                collision->edgeProjection(*this);
+                bool escape_outcome = escape(engine);
+                if (tumble_outcome && escape_outcome) {
+                    std::uniform_real_distribution<double> phi(
+                        collision->escapeAngle(*this)[0],
+                        collision->escapeAngle(*this)[1]);
+                    double phi_outcome = phi(engine);
+                    this->Theta = phi_outcome;
+                    Coord = Coord + Point(v0 * h * std::cos(Theta), v0 * h * std::sin(Theta));
+                }
             }
 
-            ofs << D_est;
-            if (i < N_data - 1) ofs << ",";
+            // Enregistrement toutes les N_interval itérations
+            if (++counter == N_interval) {
+                counter = 0;
+                double t_i = current_time;
+
+                double dx = this->getFreeCoord().getx() - X.getx();
+                double dy = this->getFreeCoord().gety() - X.gety();
+                double Dist_2 = dx * dx + dy * dy;
+
+                D_est = Dist_2 / (4.0 * t_i); // en 2D
+                ofs << D_est;
+
+                if (step < N_tot - 1) ofs << ",";
+            }
         }
 
         ofs << "\n";
     }
 
     ofs.close();
-    std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
-    // mesurer la difference, et l'exprimer en microsecondes 
-    unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    std::cout<<"temps d'execution de la mesure de D sur une periode de "<<time_upper_bound<<
-    " avec "<<N_samples<<" echantillons et "<<N_data<<" mesures : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+
+    std::chrono::high_resolution_clock::time_point b = std::chrono::high_resolution_clock::now();
+    unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    std::cout << "temps d'execution de la mesure de D sur une periode de " << time_upper_bound
+              << " avec " << N_samples << " echantillons et " << N_data
+              << " mesures : " << time * 0.000001 << " s" << std::endl;
 }
+
 
 void Mobile::measure_displacement(Environment & E, double T, double h, Point X, std::string Reorientation_mode, const std::string & filename, int N_samples){
     //cette méthode sert à écrire dans un fichier csv un échantillon de N_samples coordonnées finales

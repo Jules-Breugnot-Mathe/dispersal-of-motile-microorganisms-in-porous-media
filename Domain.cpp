@@ -17,7 +17,7 @@ Domain& Domain::operator=(const Domain & other){
     return *this;
 }
 
-const double & Domain::getradius(){
+const double & Domain::getradius() const{
     return this->radius;
 }
 

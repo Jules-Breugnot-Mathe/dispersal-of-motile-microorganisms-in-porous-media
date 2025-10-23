@@ -11,7 +11,7 @@ class Domain {
         ~Domain();
         Domain(const Domain & other);
         Domain& operator=(const Domain & other);
-        const double& getradius();
+        const double& getradius() const;
         void MakeLoop(Mobile & M) const ;
 };
 
