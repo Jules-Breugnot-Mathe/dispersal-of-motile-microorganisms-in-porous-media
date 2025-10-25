@@ -190,3 +190,23 @@ void advance_until_contact_and_print(Mobile & m, Environment & E, double h, int 
 
     std::cout << "\nFIN tests.\n";
 */
+
+
+
+/*
+Point P(0, 0);
+Environment E("uniform_Disks", 1, 0.4);
+Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
+========== Resultat ==========
+Tau* Ôëê 86.3192
+D* Ôëê 1.99505
+Nombre dÔÇÖiterations : 10
+Duree totale : 6265.37 s
+==============================
+
+
+
+
+
+
+*/

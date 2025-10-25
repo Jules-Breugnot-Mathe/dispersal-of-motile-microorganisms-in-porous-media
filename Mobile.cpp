@@ -568,7 +568,7 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
 }
 
 
-void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std::string Reorientation_mode,
+void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point X, std::string Reorientation_mode,
                                         const std::string & filename, double tau_upper_bound, 
                                         int N_samples, int N_data, double time_upper_bound)
 {
@@ -586,9 +586,11 @@ void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std
     */
     
     // on stocke les valeurs de tau en en-tete : 
-    for (int i=0 ; i < N_data ; i++) {
-        ofs << (i+1)*(tau_upper_bound / N_data) << std::endl;
+    for (int i = 0; i < N_data; i++) {
+    ofs << (i + 1) * (tau_upper_bound / N_data);
+    if (i < N_data - 1) ofs << ",";
     }
+    ofs << "\n";
 
     for (int sample=0 ; sample < N_samples ; sample++)
     {
@@ -601,7 +603,7 @@ void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std
         simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
         ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
     }
-    this->Tau = tau_upper_bound;
+    this->Tau = tau_upper_bound; this->Mt=0; this->Coord=Point(0, 0); this->Free_coord=Point(0, 0); this->Loop={0, 0};
     seed = static_cast<uint64_t>(std::random_device{}());
     simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
     ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
@@ -614,4 +616,72 @@ void Mobile::diffusivity_function_of_tau(Environment & E, double h, Point X, std
     unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
     std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de 0 a "<<tau_upper_bound
     <<", en estimant D a l'aide de "<<N_samples<<", et en effectuant "<<N_data<<" mesures : "<<time*.000001<<" s"<<std::endl;;
+}
+
+
+std::array<double, 2> Mobile::max_tau_bissection_approx(
+    const Environment & E, double h, Point X, std::string Reorientation_mode,
+    double tau_upper_bound, int N_samples, double time_upper_bound, double tol)
+{
+    /*
+    estimation avec erreur de tol de la valeur de D* et tau* pour un ensemble de paramètre donné 
+    par une méthode de bissection
+    */
+    auto start = std::chrono::high_resolution_clock::now();
+
+    auto estimate_D = [&](double tau) -> double {
+        double D_sum = 0.0;
+        for (int i = 0; i < N_samples; i++) {
+            this->Tau = tau;
+            this->Mt = 0.0; // reset le déplacement
+            uint64_t seed = static_cast<uint64_t>(std::random_device{}());
+            simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
+            D_sum += (Mt * Mt) / (4.0 * time_upper_bound);
+        }
+        return D_sum / N_samples;
+    };
+
+    double tau_left = 0.0;
+    double tau_right = tau_upper_bound;
+    double tau_mid1, tau_mid2;
+    double D1, D2;
+
+    // Paramètre pour le ratio doré (plus efficace qu'une bissection stricte)
+    const double phi = (std::sqrt(5.0) - 1.0) / 2.0;
+
+    int iteration = 0;
+    while ((tau_right - tau_left) > tol) {
+        iteration++;
+
+        tau_mid1 = tau_right - phi * (tau_right - tau_left);
+        tau_mid2 = tau_left + phi * (tau_right - tau_left);
+
+        D1 = estimate_D(tau_mid1);
+        D2 = estimate_D(tau_mid2);
+
+        std::cout << "[Iteration " << iteration << "] "
+                  << "tau1 = " << tau_mid1 << ", D1 = " << D1
+                  << " | tau2 = " << tau_mid2 << ", D2 = " << D2 << std::endl;
+
+        if (D1 < D2)
+            tau_left = tau_mid1; // le maximum est à droite
+        else
+            tau_right = tau_mid2; // le maximum est à gauche
+    }
+
+    double tau_star = 0.5 * (tau_left + tau_right);
+    double D_star = estimate_D(tau_star);
+
+    std::chrono::duration<double> elapsed =
+        std::chrono::high_resolution_clock::now() - start;
+
+    std::cout << "\n========== Resultat ==========\n";
+    std::cout << "Tau* ≈ " << tau_star << std::endl;
+    std::cout << "D* ≈ " << D_star << std::endl;
+    std::cout << "iterations : " << iteration << std::endl;
+    std::cout << "Duree totale : " << elapsed.count() << " s\n";
+    std::cout << "==============================\n";
+    std::array<double, 2> results;
+    results.data()[0] = tau_star; results.data()[1] = D_star;
+    return results;
 }
