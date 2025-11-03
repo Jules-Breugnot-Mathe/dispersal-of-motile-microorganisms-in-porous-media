@@ -421,7 +421,7 @@ void Mobile::test_exponentiality(Environment & E, double T, double h, Point X, u
 void Mobile::measure_diffusivity(Environment & E, double h, Point X,
                                  std::string Reorientation_mode,
                                  const std::string & filename,
-                                 double time_upper_bound, int N_samples, int N_data)
+                                 int N_samples, int N_data)
 {
     /*
     on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D à différents
@@ -444,7 +444,8 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
         return;
     }
 
-    double T = time_upper_bound;       // durée totale de la simulation
+    double T = (this->Tau)*500;       // durée totale de la simulation,  
+    // le temps de convergence de la simulation dépend linéairement de tau
     int N_tot = static_cast<int>(T / h);  // nombre total d’itérations
     int N_interval = static_cast<int>(std::floor(N_tot / N_data));      // nombre d’itérations entre deux enregistrements de D
 
@@ -533,7 +534,7 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
 
     std::chrono::high_resolution_clock::time_point b = std::chrono::high_resolution_clock::now();
     unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    std::cout << "temps d'execution de la mesure de D sur une periode de " << time_upper_bound
+    std::cout << "temps d'execution de la mesure de D "
               << " avec " << N_samples << " echantillons et " << N_data
               << " mesures : " << time * 0.000001 << " s" << std::endl;
 }
@@ -570,7 +571,7 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
 
 void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point X, std::string Reorientation_mode,
                                         const std::string & filename, double tau_upper_bound, 
-                                        int N_samples, int N_data, double time_upper_bound)
+                                        int N_samples, int N_data)
 {
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
     std::ofstream ofs;
@@ -584,7 +585,7 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point 
     on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D pour différentes
     valeurs de tau dans l'intervalle [0, tau_upper_bound] (il y en a donc N_data).
     */
-    
+    double T = 0;
     // on stocke les valeurs de tau en en-tete : 
     for (int i = 0; i < N_data; i++) {
     ofs << (i + 1) * (tau_upper_bound / N_data);
@@ -600,13 +601,15 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point 
     for (int i_data=0 ; i_data < N_data - 1; i_data++) {
         this->Tau = (i_data + 1) * (tau_upper_bound / N_data);
         seed = static_cast<uint64_t>(std::random_device{}());
-        simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
-        ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
+        T = (this->Tau)*500;
+        simulation(E, T, h, X, seed, Reorientation_mode);
+        ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
     }
     this->Tau = tau_upper_bound; this->Mt=0; this->Coord=Point(0, 0); this->Free_coord=Point(0, 0); this->Loop={0, 0};
     seed = static_cast<uint64_t>(std::random_device{}());
-    simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
-    ofs << (Mt * Mt) / (2 * 2 * time_upper_bound) << ","; // on écrit l'estimation de D
+    T = (this->Tau)*500;
+    simulation(E, T, h, X, seed, Reorientation_mode);
+    ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
 
     ofs <<"\n";
     }
