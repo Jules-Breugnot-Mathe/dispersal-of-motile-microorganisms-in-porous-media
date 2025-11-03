@@ -444,7 +444,7 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
         return;
     }
 
-    double T = (this->Tau)*500;       // durée totale de la simulation,  
+    double T = (this->Tau)*2000;       // durée totale de la simulation,  
     // le temps de convergence de la simulation dépend linéairement de tau
     int N_tot = static_cast<int>(T / h);  // nombre total d’itérations
     int N_interval = static_cast<int>(std::floor(N_tot / N_data));      // nombre d’itérations entre deux enregistrements de D
