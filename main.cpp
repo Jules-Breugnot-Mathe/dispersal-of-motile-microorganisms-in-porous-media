@@ -47,9 +47,9 @@ int main(){
     //std::cout<<(M.getMt()*M.getMt())/(4*34792)<<std::endl;
 
     //M.test_exponentiality(E, 200, 0.001 , P, seed, "isotropic", "Tau_estimation_data.csv", 1);
-    M.measure_diffusivity(E, 0.01, P, "isotropic", "D_estimation_data.csv", 1000, 10);
+    //M.measure_diffusivity(E, 0.01, P, "isotropic", "D_estimation_data.csv", 1000, 10);
     //M.measure_displacement(E, 34792, 0.01, P, "isotropic", "measure_displacement.csv", 1000);
-    //M.diffusivity_function_of_tau(E, 0.01, P, "run_and_reverse", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\diffusivity_function_of_tau.csv", 172, 30, 20, 50000);
+    M.diffusivity_function_of_tau(E, 0.01, P, "run_and_reverse", "diffusivity_function_of_tau.csv", 150, 1000, 30);
     //M.max_tau_bissection_approx(E, 0.01, P, "isotropic", 100, 100, 40000, 1);
 
     return 0; 
