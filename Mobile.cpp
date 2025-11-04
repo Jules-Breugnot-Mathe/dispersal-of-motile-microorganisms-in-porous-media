@@ -444,7 +444,7 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
         return;
     }
 
-    double T = (this->Tau)*2000;       // durée totale de la simulation,  
+    double T = (this->Tau)*500;       // durée totale de la simulation,  
     // le temps de convergence de la simulation dépend linéairement de tau
     int N_tot = static_cast<int>(T / h);  // nombre total d’itérations
     int N_interval = static_cast<int>(std::floor(N_tot / N_data));      // nombre d’itérations entre deux enregistrements de D
@@ -601,13 +601,13 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point 
     for (int i_data=0 ; i_data < N_data - 1; i_data++) {
         this->Tau = (i_data + 1) * (tau_upper_bound / N_data);
         seed = static_cast<uint64_t>(std::random_device{}());
-        T = (this->Tau)*2000;
+        T = (this->Tau)*500;
         simulation(E, T, h, X, seed, Reorientation_mode);
         ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
     }
     this->Tau = tau_upper_bound; this->Mt=0; this->Coord=Point(0, 0); this->Free_coord=Point(0, 0); this->Loop={0, 0};
     seed = static_cast<uint64_t>(std::random_device{}());
-    T = (this->Tau)*2000;
+    T = (this->Tau)*500;
     simulation(E, T, h, X, seed, Reorientation_mode);
     ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
 
