@@ -20,6 +20,7 @@ class Point{
         friend std::ostream& operator<<(std::ostream& o, const Point & pt);
         Point operator-(const Point & other);
         Point operator*(const double a) const;
+        const double dot_product(const Point & other) const;
 };
 
 #endif //POINT_HPP

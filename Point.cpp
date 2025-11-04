@@ -46,3 +46,8 @@ std::ostream& operator<<(std::ostream& o, const Point & pt){
 Point Point::operator*(const double a) const {
     return Point(x * a, y * a);
 }
+
+const double Point::dot_product(const Point & other) const {
+    return x*other.getx() + y*other.gety();
+}
+

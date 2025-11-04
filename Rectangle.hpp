@@ -9,9 +9,12 @@
 
 class Rectangle : public Solid{
     private : 
-        Point tab[4];
+        Point vertex[4]; 
+        Point axis[4];
+
     public : 
         Rectangle(Point p1 = Point(), Point p2 = Point(), Point p3 = Point(), Point p4 = Point());
+        Rectangle(Point center = Point(), double radius = 0);
         ~Rectangle();
         Rectangle(const Rectangle & other);
         Rectangle operator=(const Rectangle & other);

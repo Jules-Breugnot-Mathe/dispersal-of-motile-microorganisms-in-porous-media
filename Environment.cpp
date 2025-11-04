@@ -1,6 +1,7 @@
 #include "Environment.hpp"
 #include "Solid.hpp"
 #include "Disk.hpp"
+#include "Rectangle.hpp"
 #include <vector>
 
 
@@ -13,6 +14,12 @@ Environment::Environment(std::string Type, int radius, double R){
         Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5*radius, -0.5*radius), R));
         Solid_vector.push_back(std::make_unique<Disk>(Point(-0.5*radius, 0.5*radius), R));
         Solid_vector.push_back(std::make_unique<Disk>(Point(0.5*radius, -0.5*radius), R));
+    }
+    else if (Type == "uniform_Squares") {
+        Solid_vector.push_back(std::make_unique<Rectangle>(Point(0.5*radius, 0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Rectangle>(Point(-0.5*radius, -0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Rectangle>(Point(-0.5*radius, 0.5*radius), R));
+        Solid_vector.push_back(std::make_unique<Rectangle>(Point(0.5*radius, -0.5*radius), R));
     }
 }
 

@@ -137,7 +137,7 @@ void Mobile::simulation(const Environment & E, double T, double h, Point X, uint
     std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
     // mesurer la difference, et l'exprimer en microsecondes 
     unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    //std::cout<<"simulation d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+    std::cout<<"simulation d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
 
     return;
 }
