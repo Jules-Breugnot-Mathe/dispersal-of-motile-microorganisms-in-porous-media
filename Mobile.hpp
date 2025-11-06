@@ -51,7 +51,8 @@ class Mobile{
         void simulation(const Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
         Solid* CollisionDetection(const Environment & E);
         const double getMt() const;
-        void simulation_expo(Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
+        void simulation_expo(const Environment & E, double T=1, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
+        void write_trajectory_expo(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename);
         void write_trajectory(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename);
         Point& getCoord();
         Point& getFreeCoord();

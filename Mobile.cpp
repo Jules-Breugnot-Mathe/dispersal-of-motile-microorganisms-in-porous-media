@@ -147,45 +147,58 @@ void Mobile::simulation(const Environment & E, double T, double h, Point X, uint
 
 
 
-void Mobile::simulation_expo(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode){
+void Mobile::simulation_expo(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode){
     double N = T/h;
     this->Coord = X;
+
     std::mt19937_64 engine(seed);
-    std::exponential_distribution<double> Ti(1/this->Tau);
-    std::bernoulli_distribution escape(this->mu);
+
+    std::uniform_real_distribution<double> U(0, 1);
+    std::geometric_distribution<int> Ti(((1/Tau)*T)/(N+1)); // on stocke des temps géométriques pour approximer le processus de poisson
+    std::bernoulli_distribution escape(this->mu); // variable booléenne qui décide si on échappe à l'obstacle
     std::uniform_real_distribution<double> theta(0, 2*M_PI); // variable d'angle de réorientation 
+
+
     Solid* collision = nullptr; // on initialise la collision
     this->Theta = theta(engine); // on initialise l'angle de départ aléatoire
     // on a d'abord besoin de simuler les temps d'attente de tumbling
-    std::list<std::pair<double, double>> random_events;  // liste de temps d'attentes Ti suivant une loi exponentielle, avec escape booléen
-    double T_outcome = 0.0; int discrete_T_outcome; //temps exponentiels et versions discrètes
-    double T_sum = 0.0;
+    std::list<std::pair<int, bool>> random_events;  // liste de temps d'attentes Ti suivant une loi exponentielle, avec escape booléen
+    int T_outcome = 0; //temps exponentiels et versions discrètes
+    double T_sum = 0;
     double* bounds = nullptr;
-
+    //---------------------------INITIALISATION DES TEMPS----------------------//
     while (true) {
         T_outcome = Ti(engine);
-        if (T_sum + T_outcome > T) break;   
+        if (T_sum + T_outcome > N) break;   
         T_sum += T_outcome;
-        random_events.push_front({std::floor(T_outcome/h), escape(engine)}); // source d'erreur : approximation des temps exponentiels
-        //pour coller avec le pas de discrétisation, doit tendre vers 0 avec h (calculer ordre de grandeur de l'erreur)
+        random_events.push_front({T_outcome, escape(engine)}); 
     }
 
     random_events.push_front({0, 1}); // on insère un temps d'attente nul au début pour pouvoir décrémenter it sans problème
     random_events.push_back({T-T_sum, 1}); // on insère un dernier temps d'attente à la fin pour finir le processus
 
-    std::list<std::pair<double, double>>::iterator it = random_events.begin();
+    std::list<std::pair<int, bool>>::iterator it = random_events.begin();
     ++it; // on fait pointer l'itérateur sur le deuxième élément de la liste random_events
 
+
+    //------------------------DEBUT DE LA SIMULATION-------------------------//
     for (; it != random_events.end(); it++){ //on va parcourir les temps d'attente exponentiels
-        collision = this->CollisionDetection(E);
-        if ((collision == nullptr)||(std::prev(it)->second == 1)){ // pas de collison ou dernier escape positif
-            std::cout<<"it->first : "<<it->first<<std::endl;
-            std::cout<<"it->second : "<<it->second<<std::endl;
-            for (int j=0 ; j < it->first ; j++){ // on va avancer
+
+        collision = this->CollisionDetection(E); // update des collisions
+
+        E.getDomain().MakeLoop(*this); // update d'atteinte de la bordure
+
+        if ((collision == nullptr)||std::prev(it)->second){ // pas de collison ou dernier escape positif
+            
+            for (int j=0 ; j < it->first ; j++){ // on va avancer du nombre de pas stocké dans random_events
                 Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // on avance
+                Free_coord = Free_coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta));
+
                 collision = this->CollisionDetection(E);
-                if (collision != nullptr) {
-                    std::cout<<"collision !"<<std::endl;
+                E.getDomain().MakeLoop(*this);
+
+                if (collision != nullptr) { // collision detectée 
+                    
                     collision->edgeProjection(*this); // on projette le mobile sur la frontière de l'obstacle
                     bounds = collision->escapeAngle(*this);
                     std::uniform_real_distribution<double> alpha(bounds[0], bounds[1]);
@@ -193,26 +206,133 @@ void Mobile::simulation_expo(Environment & E, double T, double h, Point X, uint6
                     break; // on revient à l'itérateur sur random_events
                 }
                 // en l'absence de collision, on se réoriente de facon aléatoire 
-                else {
-                    if (Reorientation_mode == "isotropic") {
-                        //on choisit un angle dans l'intervalle [0, 2*pi]
-                        this->Theta = theta(engine);
-                    }
-                    else if (Reorientation_mode == "run_and_reverse"){
-                        //on choisit un angle centré sur l'angle opposé à theta actuel
-                    }
-                }
+            }
+            if (Reorientation_mode == "isotropic") {
+                //on choisit un angle dans l'intervalle [0, 2*pi]
+                this->Theta = theta(engine);
+            }
+            else if (Reorientation_mode == "run_and_reverse"){
+                //on choisit un angle centré sur l'angle opposé à theta actuel
+                double X = 2*std::asin(2*U(engine) - 1);
+                this->Theta = this->Theta + M_PI/2 + X;
             }
         }
     }
     delete[] bounds;
-    this->Mt = std::sqrt((this->getCoord().getx() - X.getx())*(this->getCoord().getx() - X.getx()) + (this->getCoord().gety() - X.gety())*(this->getCoord().gety() - X.gety()));
+    this->Mt = std::sqrt((this->getFreeCoord().getx() - X.getx())*(this->getFreeCoord().getx() - X.getx()) + (this->getFreeCoord().gety() - X.gety())*(this->getFreeCoord().gety() - X.gety()));
     // On a calculé le déplacement total observé Mt
 
 }
  
 
+void Mobile::write_trajectory_expo(const Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename)
+{
+    std::chrono::high_resolution_clock::time_point a= std::chrono::high_resolution_clock::now();
+    std::ofstream ofs;
+    ofs.open(filename, std::ofstream::out | std::ofstream::trunc);
+    if (ofs.is_open() == false) {
+        std::cerr<<"Mobile::write_trajectory_expo : impossible d'ouvrir le fichier"<<std::endl;
+        return ;
+    }
 
+    /* CORPS DE LA FONCTION SIMULATION_EXPO */
+
+    double N = T/h;
+    this->Coord = X;
+
+    std::mt19937_64 engine(seed);
+
+    std::uniform_real_distribution<double> U(0, 1);
+    std::geometric_distribution<int> Ti(((1/Tau)*T)/(N+1)); // on stocke des temps géométriques pour approximer le processus de poisson
+    std::bernoulli_distribution escape(this->mu); // variable booléenne qui décide si on échappe à l'obstacle
+    std::uniform_real_distribution<double> theta(0, 2*M_PI); // variable d'angle de réorientation 
+
+
+    Solid* collision = nullptr; // on initialise la collision
+    this->Theta = theta(engine); // on initialise l'angle de départ aléatoire
+    // on a d'abord besoin de simuler les temps d'attente de tumbling
+    std::list<std::pair<int, bool>> random_events;  // liste de temps d'attentes Ti suivant une loi exponentielle, avec escape booléen
+    int T_outcome = 0; //temps exponentiels et versions discrètes
+    double T_sum = 0;
+    double* bounds = nullptr;
+    //---------------------------INITIALISATION DES TEMPS----------------------//
+    while (true) {
+        T_outcome = Ti(engine);
+        if (T_sum + T_outcome > N) break;   
+        T_sum += T_outcome;
+        random_events.push_front({T_outcome, escape(engine)}); 
+    }
+
+    random_events.push_front({0, 1}); // on insère un temps d'attente nul au début pour pouvoir décrémenter it sans problème
+    random_events.push_back({T-T_sum, 1}); // on insère un dernier temps d'attente à la fin pour finir le processus
+
+    std::list<std::pair<int, bool>>::iterator it = random_events.begin();
+    ++it; // on fait pointer l'itérateur sur le deuxième élément de la liste random_events
+
+
+    //------------------------DEBUT DE LA SIMULATION-------------------------//
+    for (; it != random_events.end(); it++){ //on va parcourir les temps d'attente exponentiels
+
+        collision = this->CollisionDetection(E); // update des collisions
+
+        E.getDomain().MakeLoop(*this); // update d'atteinte de la bordure
+
+        if ((collision == nullptr)||std::prev(it)->second){ // pas de collison ou dernier escape positif
+
+            ofs <<this->Free_coord.getx()<<","<<this->Free_coord.gety()<<std::endl; // on écrit les coordonnées dans le fichier
+
+            
+            for (int j=0 ; j < it->first ; j++){ // on va avancer du nombre de pas stocké dans random_events
+                Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // on avance
+                Free_coord = Free_coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta));
+
+                collision = this->CollisionDetection(E);
+                E.getDomain().MakeLoop(*this);
+
+                if (collision != nullptr) { // collision detectée 
+                    
+                    collision->edgeProjection(*this); // on projette le mobile sur la frontière de l'obstacle
+                    bounds = collision->escapeAngle(*this);
+                    std::uniform_real_distribution<double> alpha(bounds[0], bounds[1]);
+                    this->Theta = alpha(engine);
+                    break; // on revient à l'itérateur sur random_events
+                }
+                // en l'absence de collision, on se réoriente de facon aléatoire 
+            }
+            if (collision == nullptr) {
+
+            if (Reorientation_mode == "isotropic") {
+                //on choisit un angle dans l'intervalle [0, 2*pi]
+                this->Theta = theta(engine);
+            }
+            else if (Reorientation_mode == "run_and_reverse"){
+                //on choisit un angle centré sur l'angle opposé à theta actuel
+                double X = 2*std::asin(2*U(engine) - 1);
+                this->Theta = this->Theta + M_PI/2 + X;
+            }
+            }
+
+        }
+    }
+    delete[] bounds;
+    this->Mt = std::sqrt((this->getFreeCoord().getx() - X.getx())*(this->getFreeCoord().getx() - X.getx()) + (this->getFreeCoord().gety() - X.gety())*(this->getFreeCoord().gety() - X.gety()));
+    // On a calculé le déplacement total observé Mt
+
+
+
+
+    /* FIN DU CORPS DE LA FONCTION SIMULATION_EXPO */
+
+
+    ofs.close();
+    // temps courant, apres l'execution
+    std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
+    // mesurer la difference, et l'exprimer en microsecondes 
+    unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    std::cout<<"Simulation du processus de Poisson par temps geometriques, "<<std::endl<<"ecriture d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+
+}
+        
 
 /*
     //-------------TEST DE SIMULATION--------------//
@@ -323,7 +443,7 @@ void Mobile::write_trajectory(const Environment & E, double T, double h, Point X
     std::chrono::high_resolution_clock::time_point b= std::chrono::high_resolution_clock::now();
     // mesurer la difference, et l'exprimer en microsecondes 
     unsigned int time= std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    std::cout<<"ecriture d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
+    std::cout<<"Simulation du processus par somme de Bernoulli, "<<std::endl<<"ecriture d'une trajectoire sur un temps T = "<<T<<" : "<<time*0.000001 <<" s"<<std::endl; // temps affiché en secondes
 
     return;
 }
@@ -601,16 +721,15 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point 
     for (int i_data=0 ; i_data < N_data - 1; i_data++) {
         this->Tau = (i_data + 1) * (tau_upper_bound / N_data);
         seed = static_cast<uint64_t>(std::random_device{}());
-        T = (this->Tau)*500;
-        simulation(E, T, h, X, seed, Reorientation_mode);
+        T = (this->Tau)*1000;
+        simulation_expo(E, T, h, X, seed, Reorientation_mode);
         ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
     }
     this->Tau = tau_upper_bound; this->Mt=0; this->Coord=Point(0, 0); this->Free_coord=Point(0, 0); this->Loop={0, 0};
     seed = static_cast<uint64_t>(std::random_device{}());
-    T = (this->Tau)*500;
-    simulation(E, T, h, X, seed, Reorientation_mode);
-    ofs << (Mt * Mt) / (2 * 2 * T) << ","; // on écrit l'estimation de D
-
+    T = (this->Tau)*1000;
+    simulation_expo(E, T, h, X, seed, Reorientation_mode);
+    ofs << (Mt * Mt) / (2 * 2 * T); // on écrit l'estimation de D
     ofs <<"\n";
     }
 
@@ -638,7 +757,7 @@ std::array<double, 2> Mobile::max_tau_bissection_approx(
             this->Tau = tau;
             this->Mt = 0.0; // reset le déplacement
             uint64_t seed = static_cast<uint64_t>(std::random_device{}());
-            simulation(E, time_upper_bound, h, X, seed, Reorientation_mode);
+            simulation_expo(E, time_upper_bound, h, X, seed, Reorientation_mode);
             D_sum += (Mt * Mt) / (4.0 * time_upper_bound);
         }
         return D_sum / N_samples;

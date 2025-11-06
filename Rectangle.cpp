@@ -42,15 +42,20 @@ Rectangle Rectangle::operator=(const Rectangle & other){
     return *this;
 }
 
+std::ostream& operator<<(std::ostream& o, const Rectangle & rec){
+    o << rec.vertex[0] << rec.vertex[1] << rec.vertex[2] << rec.vertex[3] << std::endl;
+    return o;
+}
+
 static inline double distance_point_segment(const Point& P, const Point& A, const Point& B, Point& closest)
 {
-    Point AB = B + A*(-1);
-    Point AP = P + A*(-1);
+    Point AB = B - A;
+    Point AP = P - A;
     double ab2 = AB.dot_product(AB);
     double t = (ab2 > 0.0) ? (AP.dot_product(AB) / ab2) : 0.0;
     t = std::max(0.0, std::min(1.0, t)); // Clamp t in [0,1]
     closest = A + AB * t;
-    Point diff = P + closest*(-1);
+    Point diff = P - closest;
     return std::sqrt(diff.dot_product(diff));
 }
 
@@ -59,7 +64,6 @@ bool Rectangle::IsCollided(const Mobile & M)
     Point P = M.getCoord();
     bool inside = true;
 
-    // Test du même côté pour chaque arête (produit vectoriel)
     for (int i = 0; i < 4; ++i) {
         Point A = vertex[i];
         Point B = vertex[(i + 1) % 4];
@@ -67,16 +71,15 @@ bool Rectangle::IsCollided(const Mobile & M)
         Point toPoint = P - A;
         double cross = edge.getx() * toPoint.gety() - edge.gety() * toPoint.getx();
 
-        // Orientation selon les sommets : si les sommets sont dans le sens horaire,
-        // alors le produit vectoriel doit être <= 0 pour être "à l'intérieur"
-        if (cross > tolerance) { 
+        // Sommets dans le sens anti-horaire :
+        if (cross < -tolerance) {
             inside = false;
             break;
         }
     }
+
     return inside;
 }
-
 
 double* Rectangle::escapeAngle(const Mobile & M)
 {
@@ -112,7 +115,7 @@ double* Rectangle::escapeAngle(const Mobile & M)
             normal = outward * (1.0 / norm);
         }
     }
-
+    normal = normal*(-1);
     // Angle de la normale sortante
     double phi_n = std::atan2(normal.gety(), normal.getx());
     const double TWO_PI = 2.0 * M_PI;
@@ -165,4 +168,3 @@ void Rectangle::edgeProjection(Mobile & M)
     Point M_proj = P - normal * (minDist - tolerance);
     this->Coordoverwrite(M, M_proj);
 }
-

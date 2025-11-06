@@ -5,6 +5,8 @@
 #include "Point.hpp"
 #include "Mobile.hpp"
 
+#include <ostream>
+
 //tests unitaires effectués
 
 class Rectangle : public Solid{
@@ -17,6 +19,7 @@ class Rectangle : public Solid{
         Rectangle(Point center = Point(), double radius = 0);
         ~Rectangle();
         Rectangle(const Rectangle & other);
+        friend std::ostream& operator<<(std::ostream& o, const Rectangle & rec);
         Rectangle operator=(const Rectangle & other);
         bool IsCollided(const Mobile & M) override;
         double* escapeAngle(const Mobile & M) override;

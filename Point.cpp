@@ -32,10 +32,8 @@ Point Point::operator+(const Point & other) const{
     return Point(this->x + other.getx(), this->y + other.gety());
 }
 
-Point Point::operator-(const Point & other){
-    this->x -= other.getx();
-    this->y -= other.gety();
-    return *this;
+Point Point::operator-(const Point & other) const{
+    return Point(this->x - other.getx(), this->y - other.gety());
 }
 
 std::ostream& operator<<(std::ostream& o, const Point & pt){
