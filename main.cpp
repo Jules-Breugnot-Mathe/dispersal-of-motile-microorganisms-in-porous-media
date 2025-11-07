@@ -30,7 +30,7 @@ int main(){
     Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
 
 
-    M.diffusivity_function_of_tau(E, 0.01, P, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\diffusivity_function_of_tau.csv", 2.5, 1000, 100);
+    M.diffusivity_function_of_tau(E, 0.01, P, "isotropic", "diffusivity_function_of_tau.csv", 2.5, 1000, 100);
 
     //M.simulation_expo(E, 10, 0.01, P, seed, "isotropic");
     //M.write_trajectory_expo(E, 10, 0.01, P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
