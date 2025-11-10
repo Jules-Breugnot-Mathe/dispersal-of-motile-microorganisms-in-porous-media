@@ -542,7 +542,7 @@ void Mobile::test_exponentiality(Environment & E, double T, double h, Point X, u
 }
 
 
-void Mobile::measure_diffusivity(Environment & E, double h, Point X,
+void Mobile::measure_diffusivity(Environment & E, Point X,
                                  std::string Reorientation_mode,
                                  const std::string & filename,
                                  int N_samples, int N_data)
@@ -554,6 +554,8 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
     obtenu par l'équivalent multivarié du théorème de berry-esseen, dans le cas particulier du déplacement libre dans R2.
     On cherche également à savoir si le temps de convergence de D dans le cas non trivial est le même, et à mesurer D en différents milieux
     */
+
+    double h = std::min(Tau/200, 0.01);
 
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
 
@@ -664,10 +666,14 @@ void Mobile::measure_diffusivity(Environment & E, double h, Point X,
 }
 
 
-double Mobile::measure_diffusivity_expo(const Environment & E, double h, Point X,
+double Mobile::measure_diffusivity_expo(const Environment & E, Point X,
                              std::string Reorientation_mode,
                               int N_samples)
 {
+
+    double h = std::min(Tau/200, 0.01);
+    
+
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
 
     if ((std::abs(X.getx()) >= E.getDomain().getradius()) || (std::abs(X.gety()) >= E.getDomain().getradius())) {
@@ -728,40 +734,49 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
 }
 
 
-void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point X, std::string Reorientation_mode,
-                                        const std::string & filename, double tau_upper_bound, 
+void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::string Reorientation_mode,
+                                        const std::string & filename, double tau_upper_bound,
                                         int N_samples, int N_data)
 {
+
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
     std::ofstream ofs;
     uint64_t seed = 0;
+
+    double h = std::min(Tau/200, 0.01);
+
     ofs.open(filename);
     if (!ofs.is_open()) {
         std::cerr<<"diffusivity_function_of_tau : impossible d'ouvrir le fichier"<<std::endl;
         return;
     }
 
+    std::array<double, 2> approx_results = max_tau_bissection_approx(E, X, Reorientation_mode, tau_upper_bound, N_samples, 0.01);
+    double tau_star = approx_results.data()[0];
+
     /*
-    on va stocker dans un fichier csv de N_samples lignes et de N_data colonnes les observations (samples) de D pour différentes
-    valeurs de tau dans l'intervalle [0, tau_upper_bound] (il y en a donc N_data).
+    On va calculer une estimation de D* et tau* dans cette configuration. Ensuite, on veux faire varier tau entre 
+    0 et 100 fois tau*. On calcule ensuite N_data valeurs de D correspondantes dans cet intervalle, puis on les affichera 
+    en faisant varier tau en échelle logarithmique
     */
 
     double tau_var = 0;
     double D_estimate = 0;
-
+    
     // on stocke les valeurs de tau en en-tete : 
     for (int i = 0; i < N_data; i++) {
-    ofs << (i + 1) * (tau_upper_bound / N_data);
+    ofs << (i + 1) * ((100 * tau_star) / N_data);
     if (i < N_data - 1) ofs << ",";
     }
     ofs << "\n";
 
     //on va écrire la deuxième ligne du csv contenant les valeurs de D
     for (int data = 0 ; data < N_data ; data++){
-        tau_var = (data + 1) * (tau_upper_bound / N_data);
+        D_estimate = 0;
+        tau_var = (data + 1) * ((100 * tau_star) / N_data);
         Tau = tau_var; 
         std::cout<<"tau = "<<tau_var<<std::endl;
-        D_estimate = measure_diffusivity_expo(E, h, X, Reorientation_mode, N_samples);
+        D_estimate = measure_diffusivity_expo(E, X, Reorientation_mode, N_samples);
         ofs << D_estimate;
         if (data < N_data - 1) {
             ofs << ",";
@@ -772,14 +787,14 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, double h, Point 
     ofs.close();
     std::chrono::high_resolution_clock::time_point b = std::chrono::high_resolution_clock::now();
     unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de 0 a "<<tau_upper_bound
+    std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de 0 a "<<approx_results.data()[0]
     <<", en estimant D a l'aide de "<<N_samples<<", et en effectuant "<<N_data<<" mesures : "<<time*.000001<<" s"<<std::endl;
 }
 
 
 std::array<double, 2> Mobile::max_tau_bissection_approx(
-    const Environment & E, double h, Point X, std::string Reorientation_mode,
-    double tau_upper_bound, int N_samples, double time_upper_bound, double tol)
+    const Environment & E, Point X, std::string Reorientation_mode,
+    double tau_upper_bound, int N_samples, double tol)
 {
     /*
     estimation avec erreur de tol de la valeur de D* et tau* pour un ensemble de paramètre donné 
@@ -787,10 +802,14 @@ std::array<double, 2> Mobile::max_tau_bissection_approx(
     */
     auto start = std::chrono::high_resolution_clock::now();
 
+    double h = std::min(Tau/200, 0.01);
+    double time_upper_bound = 0;
+
     auto estimate_D = [&](double tau) -> double {
         double D_sum = 0.0;
         for (int i = 0; i < N_samples; i++) {
             this->Tau = tau;
+            time_upper_bound = Tau*2000;
             this->Mt = 0.0; // reset le déplacement
             uint64_t seed = static_cast<uint64_t>(std::random_device{}());
             simulation_expo(E, time_upper_bound, h, X, seed, Reorientation_mode);
@@ -834,8 +853,8 @@ std::array<double, 2> Mobile::max_tau_bissection_approx(
         std::chrono::high_resolution_clock::now() - start;
 
     std::cout << "\n========== Resultat ==========\n";
-    std::cout << "Tau* ≈ " << tau_star << std::endl;
-    std::cout << "D* ≈ " << D_star << std::endl;
+    std::cout << "Tau_star : " << tau_star << std::endl;
+    std::cout << "D_star : " << D_star << std::endl;
     std::cout << "iterations : " << iteration << std::endl;
     std::cout << "Duree totale : " << elapsed.count() << " s\n";
     std::cout << "==============================\n";

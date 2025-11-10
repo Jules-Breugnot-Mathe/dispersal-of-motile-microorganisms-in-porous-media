@@ -26,38 +26,23 @@ int main(){
     uint64_t seed = static_cast<uint64_t>(std::random_device{}());
     
     Point P(0, 0);
-    Environment E("uniform_Disks", 1, 0.4);
+    Environment E_empty("empty");
+
+    Environment E1("uniform_Disks", 1, 0.4);
+    Environment E2("uniform_Disks", 1, 0.2);
+    Environment E3("uniform_Squares", 1, 0.3);
+    Environment E4("uniform_Disks", 1, 0.2);
+
     Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
 
+    //M.diffusivity_function_of_tau(E1, P, "isotropic", "Diffusivity_RR_large_uniform_Disks.csv", 10, 1000, 20);
 
-    M.diffusivity_function_of_tau(E, 0.01, P, "isotropic", "diffusivity_function_of_tau.csv", 2.5, 1000, 100);
+    double D = M.measure_diffusivity_expo(E_empty, P,"isotropic", 1000);
+    cout<<D<<endl;
 
-    //M.simulation_expo(E, 10, 0.01, P, seed, "isotropic");
-    //M.write_trajectory_expo(E, 10, 0.01, P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
-    //M.write_trajectory(E, 10000, 0.01, P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
-    //M.measure_diffusivity_expo(E, 0.01, P, "isotropic", 1000);
 
-    //M.write_trajectory(E, 100000, 0.01 , P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
-    //cout<<"deplacement final : "<<M.getMt()<<endl;
-    /*
-    double D = 0; 
-    int N = 50;
-    for (int i=0 ; i<N ; i++){
-        M.simulation(E, 50000, 0.01, Point(0,  0), seed+i, "isotropic");
-        cout<<M.getMt()<<endl;
-        D += (M.getMt()*M.getMt())/(4*50000);
-    }
+
     
-    cout<<D/N<<endl;
-    */
-    //M.simulation(E, 34792, 0.01, Point(0,  0), seed, "isotropic");
-    //std::cout<<(M.getMt()*M.getMt())/(4*34792)<<std::endl;
-
-    //M.test_exponentiality(E, 200, 0.001 , P, seed, "isotropic", "Tau_estimation_data.csv", 1);
-    //M.measure_diffusivity(E, 0.01, P, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\D_estimation_data.csv", 1000, 10);
-    //M.measure_displacement(E, 34792, 0.01, P, "isotropic", "measure_displacement.csv", 1000);
-    //M.diffusivity_function_of_tau(E, 0.01, P, "run_and_reverse", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\diffusivity_function_of_tau.csv", 20, 1000, 20);
-    //M.max_tau_bissection_approx(E, 0.01, P, "isotropic", 100, 100, 40000, 1);
     return 0; 
 }
 

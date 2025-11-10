@@ -15,6 +15,7 @@
 #include <ostream>
 #include <iomanip>
 #include <array>
+#include <algorithm>
 
 
 class Environment;
@@ -59,11 +60,11 @@ class Mobile{
         double getV0ForDebug() const; 
         double getThetaForDebug() const;
         void test_exponentiality(Environment & E, double T, double h, Point X, uint64_t seed, std::string Reorientation_mode, const std::string & filename, int N_samples);
-        void measure_diffusivity(Environment & E, double h, Point X, std::string Reorientation_mode, const std::string & filename, int N_samples, int N_data);
-        double measure_diffusivity_expo(const Environment & E, double h, Point X, std::string Reorientation_mode, int N_samples);
-        void diffusivity_function_of_tau(const Environment & E, double h, Point X, std::string Reorientation_mode, const std::string & filename, double tau_upper_bound, int N_samples, int N_data);
+        void measure_diffusivity(Environment & E, Point X, std::string Reorientation_mode, const std::string & filename, int N_samples, int N_data);
+        double measure_diffusivity_expo(const Environment & E, Point X, std::string Reorientation_mode, int N_samples);
+        void diffusivity_function_of_tau(const Environment & E, Point X, std::string Reorientation_mode, const std::string & filename, double tau_upper_bound, int N_samples, int N_data);
         void measure_displacement(Environment & E, double T, double h, Point X, std::string Reorientation_mode, const std::string & filename, int N_samples);
-        std::array<double, 2> max_tau_bissection_approx(const Environment & E, double h, Point X, std::string Reorientation_mode, double tau_upper_bound, int N_samples, double time_upper_bound, double tol);
+        std::array<double, 2> max_tau_bissection_approx(const Environment & E, Point X, std::string Reorientation_mode, double tau_upper_bound, int N_samples, double tol);
     };
 
 
