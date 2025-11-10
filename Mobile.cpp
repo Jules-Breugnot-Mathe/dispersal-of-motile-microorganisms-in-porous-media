@@ -762,18 +762,22 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::st
 
     double tau_var = 0;
     double D_estimate = 0;
+    double log_ratio = 0;
     
     // on stocke les valeurs de tau en en-tete : 
     for (int i = 0; i < N_data; i++) {
-    ofs << (i + 1) * ((100 * tau_star) / N_data);
+    log_ratio = -2.0 + 4.0 * static_cast<double>(i) / (N_data - 1);
+    tau_var = tau_star * std::pow(10.0, log_ratio);
+    ofs << tau_var ;
     if (i < N_data - 1) ofs << ",";
     }
     ofs << "\n";
-
+    
     //on va écrire la deuxième ligne du csv contenant les valeurs de D
     for (int data = 0 ; data < N_data ; data++){
         D_estimate = 0;
-        tau_var = (data + 1) * ((100 * tau_star) / N_data);
+        log_ratio = -2.0 + 4.0 * static_cast<double>(i) / (N_data - 1);
+        tau_var = tau_star * std::pow(10.0, log_ratio);
         Tau = tau_var; 
         std::cout<<"tau = "<<tau_var<<std::endl;
         D_estimate = measure_diffusivity_expo(E, X, Reorientation_mode, N_samples);

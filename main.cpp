@@ -35,10 +35,11 @@ int main(){
 
     Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
 
-    //M.diffusivity_function_of_tau(E1, P, "isotropic", "Diffusivity_RR_large_uniform_Disks.csv", 10, 1000, 20);
+    M.diffusivity_function_of_tau(E1, P, "isotropic", "Diffusivity_IS_large_uniform_Disks.csv", 10, 1000, 20);
 
-    double D = M.measure_diffusivity_expo(E_empty, P,"isotropic", 1000);
-    cout<<D<<endl;
+
+    //double D = M.measure_diffusivity_expo(E_empty, P,"isotropic", 1000);
+    //cout<<D<<endl;
 
 
 
