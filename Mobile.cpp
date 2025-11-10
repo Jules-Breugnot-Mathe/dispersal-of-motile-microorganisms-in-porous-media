@@ -776,7 +776,7 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::st
     //on va écrire la deuxième ligne du csv contenant les valeurs de D
     for (int data = 0 ; data < N_data ; data++){
         D_estimate = 0;
-        log_ratio = -2.0 + 4.0 * static_cast<double>(i) / (N_data - 1);
+        log_ratio = -2.0 + 4.0 * static_cast<double>(data) / (N_data - 1);
         tau_var = tau_star * std::pow(10.0, log_ratio);
         Tau = tau_var; 
         std::cout<<"tau = "<<tau_var<<std::endl;
