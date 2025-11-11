@@ -35,10 +35,7 @@ int main(){
 
     Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
 
-    M.diffusivity_function_of_tau(E1, P, "isotropic", "Diffusivity_IS_large_uniform_Disks.csv", 10, 1000, 20);
-    M.diffusivity_function_of_tau(E1, P, "run_and_reverse", "Diffusivity_RR_large_uniform_Disks.csv", 10, 1000, 20);
-    M.diffusivity_function_of_tau(E2, P, "isotropic", "Diffusivity_IS_small_uniform_Disks.csv", 100, 1000, 20);
-    M.diffusivity_function_of_tau(E2, P, "run_and_reverse", "Diffusivity_RR_small_uniform_Disks.csv", 100, 1000, 20);
+
     M.diffusivity_function_of_tau(E3, P, "isotropic", "Diffusivity_IS_large_uniform_Squares.csv", 100, 1000, 20);
     M.diffusivity_function_of_tau(E3, P, "run_and_reverse", "Diffusivity_RR_large_uniform_Squares.csv", 100, 1000, 20);
     M.diffusivity_function_of_tau(E4, P, "isotropic", "Diffusivity_IS_small_uniform_Squares.csv", 10, 1000, 20);
