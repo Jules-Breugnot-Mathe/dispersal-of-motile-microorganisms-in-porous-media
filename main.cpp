@@ -38,8 +38,8 @@ int main(){
 
     M.diffusivity_function_of_tau(E3, P, "isotropic", "Diffusivity_IS_large_uniform_Squares.csv", 100, 1000, 20);
     M.diffusivity_function_of_tau(E3, P, "run_and_reverse", "Diffusivity_RR_large_uniform_Squares.csv", 100, 1000, 20);
-    M.diffusivity_function_of_tau(E4, P, "isotropic", "Diffusivity_IS_small_uniform_Squares.csv", 10, 1000, 20);
-    M.diffusivity_function_of_tau(E4, P, "run_and_reverse", "Diffusivity_RR_small_uniform_Squares.csv", 10, 1000, 20);
+    M.diffusivity_function_of_tau(E4, P, "isotropic", "Diffusivity_IS_small_uniform_Squares.csv", 100, 1000, 20);
+    M.diffusivity_function_of_tau(E4, P, "run_and_reverse", "Diffusivity_RR_small_uniform_Squares.csv", 100, 1000, 20);
     
 
 
