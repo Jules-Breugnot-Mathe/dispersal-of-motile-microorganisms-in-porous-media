@@ -813,7 +813,7 @@ std::array<double, 2> Mobile::max_tau_bissection_approx(
         double D_sum = 0.0;
         for (int i = 0; i < N_samples; i++) {
             this->Tau = tau;
-            time_upper_bound = Tau*2000;
+            time_upper_bound = Tau*5000;
             this->Mt = 0.0; // reset le déplacement
             uint64_t seed = static_cast<uint64_t>(std::random_device{}());
             simulation_expo(E, time_upper_bound, h, X, seed, Reorientation_mode);
