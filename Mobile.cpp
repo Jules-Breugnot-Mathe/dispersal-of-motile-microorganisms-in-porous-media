@@ -736,7 +736,7 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
 
 void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::string Reorientation_mode,
                                         const std::string & filename, double tau_upper_bound,
-                                        int N_samples, int N_data)
+                                        int N_samples, int N_data, double tau_star)
 {
 
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
@@ -751,8 +751,6 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::st
         return;
     }
 
-    std::array<double, 2> approx_results = max_tau_bissection_approx(E, X, Reorientation_mode, tau_upper_bound, N_samples, 0.01);
-    double tau_star = approx_results.data()[0];
 
     /*
     On va calculer une estimation de D* et tau* dans cette configuration. Ensuite, on veux faire varier tau entre 
@@ -791,7 +789,7 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::st
     ofs.close();
     std::chrono::high_resolution_clock::time_point b = std::chrono::high_resolution_clock::now();
     unsigned int time = std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
-    std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de 0 a "<<approx_results.data()[0]
+    std::cout << "temps d'execution de la mesure de D en fonction de tau pour tau variant de "<<tau_star*0.01<<" a "<<tau_star*100
     <<", en estimant D a l'aide de "<<N_samples<<", et en effectuant "<<N_data<<" mesures : "<<time*.000001<<" s"<<std::endl;
 }
 
