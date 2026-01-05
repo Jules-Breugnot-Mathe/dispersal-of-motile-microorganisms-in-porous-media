@@ -33,8 +33,9 @@ int main(){
     Environment E3("uniform_Squares", 1, 0.4); // large uniform Squares
     Environment E4("uniform_Squares", 1, 0.2); // small uniform Squares
 
-    Mobile M(P, 1, 0, 1, 0, 0.5); // v0=10, Dr=0, Tau=1, Theta=0, mu = 0.7
-
+    Mobile M(P, 1, 5, 1, 0, 0.5); // v0=1, Dr=0, Tau=1, Theta=0, mu = 0.7
+    M.write_trajectory(E4, 100, 0.01, P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
+    
 
     //M.write_trajectory_expo(E3, 100, 0.01, P, seed, "isotropic", "C:\\Users\\Jules\\Desktop\\Stage ENS 4A\\data\\Trajectories.csv");
     /*
@@ -50,8 +51,8 @@ int main(){
     //M.diffusivity_function_of_tau(E3, P, "isotropic", "Diffusivity_IS_large_uniform_Squares.csv", 10, 1000, 10, 0.82690);
     //M.diffusivity_function_of_tau(E3, P, "run_and_reverse", "Diffusivity_RR_large_uniform_Squares.csv", 100, 1000, 20);
     // small uniform Squares
-    M.diffusivity_function_of_tau(E4, P, "isotropic", "Diffusivity_IS_small_uniform_Squares.csv", 200, 1000, 20, 0.82690);
-    // M.diffusivity_function_of_tau(E4, P, "run_and_reverse", "Diffusivity_RR_small_uniform_Squares.csv", 100, 1000, 20);
+    //M.diffusivity_function_of_tau(E4, P, "isotropic", "Diffusivity_IS_small_uniform_Squares.csv", 200, 1000, 20, 0.82690);
+    //M.diffusivity_function_of_tau(E4, P, "run_and_reverse", "Diffusivity_RR_small_uniform_Squares.csv", 1000, 20, 0.60555);
     
     return 0; 
 }

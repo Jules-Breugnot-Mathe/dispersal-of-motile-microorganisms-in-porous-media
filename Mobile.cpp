@@ -75,6 +75,7 @@ void Mobile::simulation(const Environment & E, double T, double h, Point X, uint
     double N = T/h;
     this->Coord = X;
     std::mt19937_64 engine(seed);
+    std::normal_distribution<double> rotational_diffusivity(0, 2*Dr*h); // variable de diffusivité rotationelle
     std::bernoulli_distribution tumble(h/this->Tau); // variable de bernoulli de l'evènement "tumbling"
     std::bernoulli_distribution escape(this->mu); // variable de bernoulli de l'évènement "escape"
     std::uniform_real_distribution<double> theta(0, 2*M_PI); // variable d'angle de réorientation 
@@ -91,6 +92,7 @@ void Mobile::simulation(const Environment & E, double T, double h, Point X, uint
 
         E.getDomain().MakeLoop(*this);
         //Coord est dans le domaine, Loop a compté le nombre de tours, et Free_coord est inchangé et encapsule les coordonnées "réelles"
+        this->Theta += rotational_diffusivity(engine); // on affecte l'angle selon le coefficient Dr à chaque incrément temporel
 
         tumble_outcome = tumble(engine); //on observe la variable tumble
         collision = this->CollisionDetection(E); // on vérifie la collision
@@ -157,6 +159,7 @@ void Mobile::simulation_expo(const Environment & E, double T, double h, Point X,
     
     std::mt19937_64 engine(seed);
 
+    std::normal_distribution<double> rotational_diffusivity(0, 2*Dr*h); // variable de diffusivité rotationelle
     std::uniform_real_distribution<double> U(0, 1);
     std::geometric_distribution<int> Ti(((1/Tau)*T)/(N+1)); // on stocke des temps géométriques pour approximer le processus de poisson
     std::bernoulli_distribution escape(this->mu); // variable booléenne qui décide si on échappe à l'obstacle
@@ -195,6 +198,8 @@ void Mobile::simulation_expo(const Environment & E, double T, double h, Point X,
         if ((collision == nullptr)||std::prev(it)->second){ // pas de collison ou dernier escape positif
             
             for (int j=0 ; j < it->first ; j++){ // on va avancer du nombre de pas stocké dans random_events
+
+                //this->Theta += rotational_diffusivity(engine); 
                 Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // on avance
                 Free_coord = Free_coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta));
 
@@ -246,6 +251,7 @@ void Mobile::write_trajectory_expo(const Environment & E, double T, double h, Po
 
     std::mt19937_64 engine(seed);
 
+    std::normal_distribution<double> rotational_diffusivity(0, 2*Dr*h); // variable de diffusivité rotationelle
     std::uniform_real_distribution<double> U(0, 1);
     std::geometric_distribution<int> Ti(((1/Tau)*T)/(N+1)); // on stocke des temps géométriques pour approximer le processus de poisson
     std::bernoulli_distribution escape(this->mu); // variable booléenne qui décide si on échappe à l'obstacle
@@ -287,6 +293,9 @@ void Mobile::write_trajectory_expo(const Environment & E, double T, double h, Po
 
             
             for (int j=0 ; j < it->first ; j++){ // on va avancer du nombre de pas stocké dans random_events
+
+                //Theta += rotational_diffusivity(engine);
+
                 Coord = Coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta)); // on avance
                 Free_coord = Free_coord + Point(v0*h*std::cos(Theta), v0*h*std::sin(Theta));
 
@@ -301,7 +310,7 @@ void Mobile::write_trajectory_expo(const Environment & E, double T, double h, Po
                     this->Theta = alpha(engine);
                     break; // on revient à l'itérateur sur random_events
                 }
-                // en l'absence de collision, on se réoriente de facon aléatoire 
+                // en l'absence de collision, on se réoriente de facon aléatoire
             }
             if (collision == nullptr) {
 
@@ -382,6 +391,7 @@ void Mobile::write_trajectory(const Environment & E, double T, double h, Point X
     double N = T/h;
     this->Coord = X;
     std::mt19937_64 engine(seed);
+    std::normal_distribution<double> rotational_diffusivity(0, 2*Dr*h); // variable de diffusivité rotationelle
     std::bernoulli_distribution tumble(h/this->Tau); // variable de bernoulli de l'evènement "tumbling"
     std::bernoulli_distribution escape(this->mu); // variable de bernoulli de l'évènement "escape"
     std::uniform_real_distribution<double> theta(0, 2*M_PI); // variable d'angle de réorientation 
@@ -398,6 +408,8 @@ void Mobile::write_trajectory(const Environment & E, double T, double h, Point X
 
         E.getDomain().MakeLoop(*this);
         //Coord est dans le domaine, Loop a compté le nombre de tours, et Free_coord est inchangé et encapsule les coordonnées "réelles"
+
+        this->Theta += rotational_diffusivity(engine);
 
         ofs <<this->Free_coord.getx()<<","<<this->Free_coord.gety()<<std::endl; // on écrit les coordonnées dans le fichier
 
@@ -555,7 +567,7 @@ void Mobile::measure_diffusivity(Environment & E, Point X,
     On cherche également à savoir si le temps de convergence de D dans le cas non trivial est le même, et à mesurer D en différents milieux
     */
 
-    double h = std::min(Tau/200, 0.01);
+    double h = std::min(Tau/10, 0.01);
 
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
 
@@ -671,7 +683,7 @@ double Mobile::measure_diffusivity_expo(const Environment & E, Point X,
                               int N_samples)
 {
 
-    double h = std::min(Tau/200, 0.01);
+    double h = std::min(Tau/10, 0.01);
     
 
     std::chrono::high_resolution_clock::time_point a = std::chrono::high_resolution_clock::now();
@@ -735,7 +747,7 @@ void Mobile::measure_displacement(Environment & E, double T, double h, Point X, 
 
 
 void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::string Reorientation_mode,
-                                        const std::string & filename, double tau_upper_bound,
+                                        const std::string & filename,
                                         int N_samples, int N_data, double tau_star)
 {
 
@@ -743,7 +755,7 @@ void Mobile::diffusivity_function_of_tau(const Environment & E, Point X, std::st
     std::ofstream ofs;
     uint64_t seed = 0;
 
-    double h = std::min(Tau/200, 0.01);
+    double h = std::min(Tau/10, 0.01);
 
     ofs.open(filename);
     if (!ofs.is_open()) {
@@ -804,7 +816,7 @@ std::array<double, 2> Mobile::max_tau_bissection_approx(
     */
     auto start = std::chrono::high_resolution_clock::now();
 
-    double h = std::min(Tau/200, 0.01);
+    double h = std::min(Tau/10, 0.01);
     double time_upper_bound = 0;
 
     auto estimate_D = [&](double tau) -> double {
