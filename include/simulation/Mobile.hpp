@@ -19,7 +19,7 @@
 #include <array>
 #include <algorithm>
 
-
+ 
 class Environment;
 
 
@@ -69,8 +69,7 @@ class Mobile{
         std::array<double, 2> max_tau_bissection_approx(const Environment & E, Point X, std::string Reorientation_mode, double tau_upper_bound, int N_samples, double tol);
 
         void PeriodicSimulationRenderer(const Environment & E, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
-        void NonPeriodicSimulationRenderer();
-
+        void InfiniteSimulationRenderer(const Environment & E, double h=0.01, Point X = Point(), uint64_t seed = 0, std::string Reorientation_mode = "isotropic");
     };
 
 

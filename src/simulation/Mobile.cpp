@@ -6,9 +6,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "Shader.hpp"
 #include "TrajectoryRenderer.hpp"
 #include "EnvironmentRenderer.hpp"
+#include "rendering/InfiniteEnvironmentRenderer.hpp"
 
 # define M_PI           3.14159265358979323846  /* pi */
 
@@ -1023,4 +1028,161 @@ En coordonnées sur le Tore */
     glfwTerminate();
 }
 
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
 
+void Mobile::InfiniteSimulationRenderer(const Environment & E, double h, 
+                                        Point X, uint64_t seed,
+                                         std::string Reorientation_mode)
+{
+    // ================= GLFW =================
+    if (!glfwInit()) {
+        std::cerr << "GLFW init failed\n";
+        return;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow* window =
+        glfwCreateWindow(800, 800, "Infinite Simulation Renderer", nullptr, nullptr);
+
+    if (!window) {
+        glfwTerminate();
+        return;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // ================= GLAD =================
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "GLAD init failed\n";
+        return;
+    }
+
+    glEnable(GL_DEPTH_TEST);
+
+    // ================= SHADER =================
+    Shader cameraShader(
+        "shaders/camera.vert",
+        "shaders/basic.frag"
+    );
+
+    // ================= RENDERERS =================
+    InfiniteEnvironmentRenderer envRenderer(E);
+    TrajectoryRenderer trajRenderer;
+
+    // ================= CAMERA =================
+    float z_cam = 3.0f;
+
+    // ================= SIMULATION INIT =================
+    this->Coord = X;
+    this->Free_coord = X;
+
+    std::mt19937_64 engine(seed);
+    std::normal_distribution<double> rotational_diffusivity(0, 2 * Dr * h);
+    std::bernoulli_distribution tumble(h / this->Tau);
+    std::bernoulli_distribution escape(this->mu);
+    std::uniform_real_distribution<double> theta(0, 2 * M_PI);
+    std::uniform_real_distribution<double> U(0, 1);
+
+    bool tumble_outcome;
+    bool escape_outcome;
+    double phi_outcome;
+
+    Solid* collision = nullptr;
+    this->Theta = theta(engine);
+
+    // ================= MAIN LOOP =================
+    while (!glfwWindowShouldClose(window))
+    {
+        // ---------- INPUT ----------
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
+
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+            z_cam -= 0.05f;
+
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+            z_cam += 0.05f;
+
+        // ---------- NUMERICAL STEP ----------
+        E.getDomain().MakeLoop(*this);
+
+        this->Theta += rotational_diffusivity(engine);
+        tumble_outcome = tumble(engine);
+        collision = this->CollisionDetection(E);
+
+        if (collision == nullptr) {
+            if (tumble_outcome) {
+                if (Reorientation_mode == "run_and_reverse") {
+                    double Xr = 2 * std::asin(2 * U(engine) - 1);
+                    this->Theta += M_PI / 2 + Xr;
+                }
+                else {
+                    this->Theta = theta(engine);
+                }
+            }
+            Coord = Coord + Point(v0 * h * std::cos(Theta),
+                                  v0 * h * std::sin(Theta));
+            Free_coord = Free_coord + Point(v0 * h * std::cos(Theta),
+                                            v0 * h * std::sin(Theta));
+        }
+        else {
+            collision->edgeProjection(*this);
+            escape_outcome = escape(engine);
+
+            if (tumble_outcome && escape_outcome) {
+                std::uniform_real_distribution<double> phi(
+                    collision->escapeAngle(*this)[0],
+                    collision->escapeAngle(*this)[1]
+                );
+                this->Theta = phi(engine);
+                Coord = Coord + Point(v0 * h * std::cos(Theta),
+                                      v0 * h * std::sin(Theta));
+                Free_coord = Free_coord + Point(v0 * h * std::cos(Theta),
+                                                v0 * h * std::sin(Theta));
+            }
+        }
+
+        // ---------- TRAJECTORY ----------
+        trajRenderer.addPoint(Point(Free_coord));
+
+        // ---------- RENDER ----------
+        glClearColor(0.08f, 0.08f, 0.12f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 projection =
+            glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+
+        glm::mat4 view =
+            glm::lookAt(glm::vec3(0.0f, 0.0f, z_cam),
+                        glm::vec3(0.0f, 0.0f, 0.0f),
+                        glm::vec3(0.0f, 1.0f, 0.0f));
+
+        glm::mat4 MVP = projection * view;
+
+        cameraShader.use();
+        cameraShader.setVec3("color", 0.9f, 0.9f, 0.9f);
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(cameraShader.ID, "MVP"),
+            1,
+            GL_FALSE,
+            glm::value_ptr(MVP)
+        );
+
+        envRenderer.draw(cameraShader, z_cam);
+        trajRenderer.draw(cameraShader);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
+    return;
+}
