@@ -1071,6 +1071,10 @@ void Mobile::InfiniteSimulationRenderer(const Environment & E, double h,
         "shaders/camera.vert",
         "shaders/basic.frag"
     );
+    Shader shader(
+        "shaders/basic.vert",
+        "shaders/basic.frag"
+    );
 
     // ================= RENDERERS =================
     InfiniteEnvironmentRenderer envRenderer(E);
@@ -1176,8 +1180,14 @@ void Mobile::InfiniteSimulationRenderer(const Environment & E, double h,
             glm::value_ptr(MVP)
         );
 
+        // Environnement : avec profondeur
+        glEnable(GL_DEPTH_TEST);
         envRenderer.draw(cameraShader, z_cam);
+
+        // Trajectoire : overlay
+        glDisable(GL_DEPTH_TEST);
         trajRenderer.draw(cameraShader);
+        glEnable(GL_DEPTH_TEST);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

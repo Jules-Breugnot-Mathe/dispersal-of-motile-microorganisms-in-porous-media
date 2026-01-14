@@ -27,8 +27,9 @@ void InfiniteEnvironmentRenderer::draw(const Shader& shader, float z_cam) const
 {
     shader.use();
 
-    // Estimation conservative du champ visible
+    // Distance algébrique caméra-plan Oxy 
     float visibleRadius = z_cam * 0.8f;
+
     int N = static_cast<int>(std::ceil(visibleRadius / tileSize)) + 1;
 
     int locOffset = glGetUniformLocation(shader.ID, "modelOffset");

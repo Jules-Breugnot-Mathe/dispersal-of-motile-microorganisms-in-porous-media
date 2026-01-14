@@ -48,10 +48,15 @@ int main()
 {
     
     Environment E("uniform_Disks");
+    Environment F("uniform_Squares");
+
     Mobile M(Point(0,0), 0.1, 1, 1, 0, 0.5); // (Point, v, Dr, tau, Theta, mu)
-    //M.PeriodicSimulationRenderer(E, 0.01, Point(0.0, 0.0), 0, "isotropic");
+
     M.InfiniteSimulationRenderer(E, 0.01, Point(0.0, 0.0), 0, "isotropic");
+    M.PeriodicSimulationRenderer(E, 0.01, Point(0.0, 0.0), 0, "isotropic");
+    M.PeriodicSimulationRenderer(F, 0.01, Point(0.0, 0.0), 0, "isotropic");
     
+
     return 0;
     
 }
