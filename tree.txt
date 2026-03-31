@@ -1,0 +1,89 @@
+.
+├── build
+│   ├── libraries
+│   │   └── glad
+│   │       └── src
+│   └── src
+│       ├── rendering
+│       │   ├── DiskRenderer.o
+│       │   ├── EnvironmentRenderer.o
+│       │   ├── InfiniteEnvironmentRenderer.o
+│       │   ├── MobileRenderer.o
+│       │   ├── Rectanglerenderer.o
+│       │   ├── Renderer.o
+│       │   ├── Shader.o
+│       │   └── TrajectoryRenderer.o
+│       └── simulation
+│           ├── Disk.o
+│           ├── Domain.o
+│           ├── Environment.o
+│           ├── main.o
+│           ├── Mobile.o
+│           ├── Point.o
+│           ├── Rectangle.o
+│           ├── Solid.o
+│           └── tests.o
+├── data
+│   └── Trajectories.csv
+├── include
+│   ├── glad
+│   │   └── glad.h
+│   ├── KHR
+│   │   └── khrplatform.h
+│   ├── rendering
+│   │   ├── DiskRenderer.hpp
+│   │   ├── EnvironmentRenderer.hpp
+│   │   ├── InfiniteEnvironmentRenderer.hpp
+│   │   ├── MobileRenderer.hpp
+│   │   ├── RectangleRenderer.hpp
+│   │   ├── Renderer.hpp
+│   │   ├── Shader.hpp
+│   │   └── TrajectoryRenderer.hpp
+│   └── simulation
+│       ├── Disk.hpp
+│       ├── Domain.hpp
+│       ├── Environment.hpp
+│       ├── Mobile.hpp
+│       ├── Point.hpp
+│       ├── Rectangle.hpp
+│       ├── Solid.hpp
+│       └── tests.hpp
+├── Libraries
+│   ├── glad
+│   │   └── src
+│   │       └── glad.c
+│   └── glfw
+│       ├── include
+│       │   └── GLFW
+│       └── lib
+│           └── libglfw3.a
+├── main.exe
+├── Makefile
+├── README.txt
+├── shaders
+│   ├── basic.frag
+│   ├── basic.vert
+│   └── camera.vert
+├── src
+│   ├── rendering
+│   │   ├── DiskRenderer.cpp
+│   │   ├── EnvironmentRenderer.cpp
+│   │   ├── InfiniteEnvironmentRenderer.cpp
+│   │   ├── MobileRenderer.cpp
+│   │   ├── Rectanglerenderer.cpp
+│   │   ├── Renderer.cpp
+│   │   ├── Shader.cpp
+│   │   └── TrajectoryRenderer.cpp
+│   └── simulation
+│       ├── Disk.cpp
+│       ├── Domain.cpp
+│       ├── Environment.cpp
+│       ├── main.cpp
+│       ├── Mobile.cpp
+│       ├── Point.cpp
+│       ├── Rectangle.cpp
+│       ├── Solid.cpp
+│       └── tests.cpp
+└── tree.txt
+
+25 directories, 62 files
