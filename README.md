@@ -134,8 +134,6 @@ make clean ; make
 ./main
 ```
 
-```
-
 The project was developed under Windows and successfully tested on Linux during large-scale simulation campaigns. The server Glenan of the Université Claude Benard Lyon 1 (UCBL) was used to execute the simulation code, in the way of obtaining a sufficient dataset.
 
 ---
